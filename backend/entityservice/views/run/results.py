@@ -46,9 +46,12 @@ def get_result(dbinstance, project_id, run_id, token):
         return {"groups": result}
 
     elif result_type == 'similarity_scores':
-        logger.info("Similarity result being returned")
-        return get_similarity_score_result(dbinstance, run_id)
-
+        if 'INTERNAL_OBJECT_STORE_ADDRESS' in request.headers:
+            logger.info("Returning object store filename for similarity scores")
+            get_similarity_score_result_filename(dbinstance, run_id)
+        else:
+            logger.info("Similarity result being returned")
+            return get_similarity_score_result(dbinstance, run_id)
     elif result_type == 'permutations':
         logger.info("Permutation result being returned")
         return get_permutations_result(project_id, run_id, dbinstance, token, auth_token_type)
@@ -57,10 +60,19 @@ def get_result(dbinstance, project_id, run_id, token):
         safe_fail_request(500, message='Project has unknown result type')
 
 
+def get_similarity_score_result_filename(dbinstance, run_id):
+    logger.info("Similarity score result filename being returned")
+    try:
+        return db.get_similarity_scores_filename(dbinstance, run_id)
+    except TypeError:
+        logger.exception("Couldn't find the similarity score file for the runId %s", run_id)
+        safe_fail_request(500, "Failed to retrieve similarity scores")
+
+
 def get_similarity_score_result(dbinstance, run_id):
     logger.info("Similarity score result being returned")
     try:
-        filename = db.get_similarity_scores_filename(dbinstance, run_id)
+        filename = get_similarity_score_result_filename(dbinstance, run_id)
         return get_similarity_scores(filename)
 
     except TypeError:
