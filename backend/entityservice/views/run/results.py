@@ -2,11 +2,13 @@ from flask import request, g
 from structlog import get_logger
 import opentracing
 
+from entityservice.settings import Config as config
 from entityservice import database as db
 from entityservice.serialization import get_similarity_scores
 from entityservice.utils import safe_fail_request
 from entityservice.views import bind_log_and_span
 from entityservice.views.auth_checks import abort_if_run_doesnt_exist, get_authorization_token_type_or_abort
+from entityservice.views.objectstore import prepare_restricted_download_response
 
 logger = get_logger()
 
@@ -48,7 +50,10 @@ def get_result(dbinstance, project_id, run_id, token):
     elif result_type == 'similarity_scores':
         if 'INTERNAL_OBJECT_STORE_ADDRESS' in request.headers:
             logger.info("Returning object store filename for similarity scores")
-            get_similarity_score_result_filename(dbinstance, run_id)
+            bucket = config.MINIO_BUCKET
+            object_store_path = get_similarity_score_result_filename(dbinstance, run_id)
+            logger.info("Retrieving temporary object store credentials")
+            return prepare_restricted_download_response(bucket, object_store_path)
         else:
             logger.info("Similarity result being returned")
             return get_similarity_score_result(dbinstance, run_id)

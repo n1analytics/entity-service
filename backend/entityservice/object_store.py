@@ -2,7 +2,6 @@ import minio
 from minio.credentials import Credentials, Static
 from structlog import get_logger
 
-from entityservice.async_worker import logger
 from entityservice.settings import Config as config
 
 logger = get_logger('objectstore')
@@ -38,6 +37,24 @@ def connect_to_upload_object_store():
     mc.set_app_info("anonlink-upload", "minio client for uploads")
     logger.debug("Connected to minio upload account")
 
+    return mc
+
+
+def object_store_download_only_client():
+    """
+    Instantiate a minio client with a get only policy applied.
+
+    :return:
+    """
+    mc = minio.Minio(
+        config.MINIO_SERVER,
+        config.DOWNLOAD_OBJECT_STORE_ACCESS_KEY,
+        config.DOWNLOAD_OBJECT_STORE_SECRET_KEY,
+        region="us-east-1",
+        secure=False
+    )
+    mc.set_app_info("anonlink-upload", "minio client for downloads")
+    logger.debug("Connected to minio download account")
     return mc
 
 
